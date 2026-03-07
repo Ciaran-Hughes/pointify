@@ -47,11 +47,16 @@ export function BulletItem({ bullet, onUpdate, onDelete, disabled }) {
     if (e.key === 'Escape') { setText(bullet.text); setEditing(false); }
   };
 
+  const displayText =
+    bullet.text.length > 0
+      ? bullet.text.charAt(0).toUpperCase() + bullet.text.slice(1)
+      : bullet.text;
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-2 group py-1"
+      className="flex items-center gap-2 group py-1 min-h-[1.5rem]"
     >
       {/* Drag handle */}
       <button
@@ -59,15 +64,15 @@ export function BulletItem({ bullet, onUpdate, onDelete, disabled }) {
         {...listeners}
         aria-label="Drag to reorder"
         disabled={disabled}
-        className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded p-0.5 -m-0.5"
         tabIndex={0}
       >
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <svg className="w-4 h-4 block" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
           <path d="M7 3a1 1 0 000 2h6a1 1 0 000-2H7zm-1 4a1 1 0 000 2h8a1 1 0 000-2H6zm-1 4a1 1 0 000 2h10a1 1 0 000-2H5z" />
         </svg>
       </button>
 
-      <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400" aria-hidden="true" />
+      <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400" aria-hidden="true" />
 
       {editing ? (
         <div className="flex-1 flex gap-2">
@@ -91,8 +96,8 @@ export function BulletItem({ bullet, onUpdate, onDelete, disabled }) {
           </button>
         </div>
       ) : (
-        <div className="flex-1 flex items-start gap-1">
-          <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{bullet.text}</span>
+        <div className="flex-1 flex items-center gap-1 min-w-0">
+          <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{displayText}</span>
           <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
             <button
               onClick={() => setEditing(true)}

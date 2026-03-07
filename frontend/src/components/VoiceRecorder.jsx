@@ -36,7 +36,7 @@ const WHISPER_LANGUAGES = [
 export function VoiceRecorder({ pageId, onRecordingComplete }) {
   const { user } = useAuth();
   const recorder = useRecorder();
-  const [model, setModel] = useState('medium');
+  const [model, setModel] = useState('large-v3');
   const [language, setLanguage] = useState(user?.whisper_language ?? 'en');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
