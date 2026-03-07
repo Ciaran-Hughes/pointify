@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pointify-api
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=
+    restart: unless-stopped
+    volumes:
+      # Persistent storage for SQLite DB and uploaded audio files.
+      # Set DATA_PATH in .env to an absolute path on your host, e.g.:
+      #   DATA_PATH=/path/to/pointify/data
+      - ${DATA_PATH}/data:/app/data
+      # Whisper model cache — models are large (75 MB–3 GB) and should survive
+      # container rebuilds. Set WHISPER_CACHE_PATH in .env, e.g.:
+      #   WHISPER_CACHE_PATH=/path/to/pointify/whisper_cache
+      - ${WHISPER_CACHE_PATH}:/home/appuser/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - pointify_internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: pointify-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - pointify_internal
+
+networks:
+  pointify_internal:
+    driver: bridge

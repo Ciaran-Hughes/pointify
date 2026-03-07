@@ -1,0 +1,47 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Data (user content - never commit)
+backend/data/
+# Integration test DBs
+*.db
+*.db-shm
+*.db-wal
+/tmp/int_test.db
+integration_test.py
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.cursor/agent-transcripts/
+.cursor/projects/
+.cursor/chat/
+.cursor/debug-*.log
+*.swp
+*.swo

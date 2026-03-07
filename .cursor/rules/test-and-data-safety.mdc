@@ -1,0 +1,32 @@
+---
+description: Test isolation and production data safety rules for this project
+alwaysApply: true
+---
+
+# Test & Production Data Safety
+
+## Production database is off-limits for tests
+- Production DB: `backend/data/pointify.db`
+- Test DB: temp file in `/tmp/` (created by `conftest.py` via `tempfile`)
+- **Never point pytest, integration scripts, or any agent-run code at the production DB.**
+- The `conftest.py` fixture already handles isolation — do not change `TEST_DB_URL` to point anywhere under `backend/data/`.
+
+## Integration / smoke tests must use isolated ports and a throwaway DB
+- **Never use production ports (8000 for backend, 5173 for frontend) for any test or agent-run server.**
+- Start test server instances on unused ports (e.g. 8100, 8200) with `DB_PATH=/tmp/some_test.db`.
+- **Always kill test server processes immediately after the test run completes.** Do not leave them running in the background.
+- Delete the temp DB after the test run completes.
+- Never run any integration script against the production server without explicit user instruction.
+
+## Never start the production app
+- **Never start the backend (port 8000) or frontend (port 5173).** The user always starts and stops the production app themselves.
+- Only start servers when explicitly asked, and only on non-production ports with isolated test databases.
+
+## Never reset or delete production state
+- Do not delete `backend/data/pointify.db` or `backend/data/audio/` without explicit user instruction.
+- Do not kill the production uvicorn process (port 8000) or frontend (port 5173) without explicit user instruction.
+- If a test requires a clean state, use a separate DB file, not the production one.
+
+## Admin credentials
+- The production app bootstraps `admin/admin` on first run with `must_change_password=True`.
+- Tests use their own fixtures and never rely on or modify the production admin user.
