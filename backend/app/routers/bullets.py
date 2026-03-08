@@ -45,7 +45,7 @@ async def get_page_by_days(
     all_recordings = (
         db.query(Recording)
         .filter(Recording.page_id == page_id, Recording.archived_at.is_(None))
-        .order_by(Recording.recorded_date.desc(), Recording.created_at.asc())
+        .order_by(Recording.recorded_date.desc(), Recording.created_at.desc())
         .all()
     )
     recording_map: dict[uuid.UUID, Recording] = {rec.id: rec for rec in all_recordings}

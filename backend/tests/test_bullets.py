@@ -1,5 +1,6 @@
 """Tests: bullet points CRUD, reorder, IDOR, day deletion."""
 
+import time
 from datetime import date
 
 from app.models import BulletPoint, Page, Recording
@@ -86,6 +87,23 @@ class TestBulletCRUD:
         # bullets now live inside groups[].bullets, not at the top level
         all_bullets = [b for d in days for g in d["groups"] for b in g["bullets"]]
         assert any(b["text"] == "Day bullet" for b in all_bullets)
+
+    def test_recordings_within_day_ordered_latest_first(self, client, regular_user, user_headers, user_page, db):
+        today = str(date.today())
+        rec1 = _make_recording(db, user_page.id, day=date.today())
+        _make_bullet(db, user_page.id, recording_id=rec1.id, text="First recording", day=date.today())
+        time.sleep(1.1)  # ensure rec2 has strictly later created_at (DB often second precision)
+        rec2 = _make_recording(db, user_page.id, day=date.today())
+        _make_bullet(db, user_page.id, recording_id=rec2.id, text="Second recording", day=date.today())
+        r = client.get(f"/api/v1/pages/{user_page.id}/days", headers=user_headers)
+        assert r.status_code == 200
+        days = r.json()
+        day_group = next((d for d in days if d["day"] == today), None)
+        assert day_group is not None
+        groups = day_group["groups"]
+        assert len(groups) == 2
+        assert groups[0]["recording"]["id"] == str(rec2.id)
+        assert groups[1]["recording"]["id"] == str(rec1.id)
 
 
 class TestBulletIDOR:
