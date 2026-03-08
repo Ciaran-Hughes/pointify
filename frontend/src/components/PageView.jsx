@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, MicrophoneIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, MicrophoneIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { pages as pagesApi } from '../api';
@@ -15,6 +15,7 @@ export function PageView() {
   const [showRecorder, setShowRecorder] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const nameInputRef = useRef(null);
 
   const loadPage = useCallback(async () => {
@@ -52,6 +53,17 @@ export function PageView() {
 
   const handleDayDelete = (day) => {
     setGroups((prev) => prev.filter((g) => g.day !== day));
+  };
+
+  const handleDeletePage = async () => {
+    if (!window.confirm('Delete this page? All recordings and notes will be removed.')) return;
+    setDeleting(true);
+    try {
+      await pagesApi.delete(pageId);
+      navigate('/');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) return (
@@ -96,6 +108,14 @@ export function PageView() {
           )}
         </div>
 
+        <button
+          onClick={handleDeletePage}
+          disabled={deleting}
+          aria-label="Delete page"
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
         <ThemeToggle />
       </header>
 

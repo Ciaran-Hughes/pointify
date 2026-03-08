@@ -1,5 +1,9 @@
 """Tests: pages CRUD and IDOR prevention."""
 
+from datetime import date
+
+from app.models import BulletPoint, Page, Recording
+
 
 class TestPagesCRUD:
     def test_create_page(self, client, regular_user, user_headers):
@@ -37,6 +41,36 @@ class TestPagesCRUD:
         assert r.status_code == 204
         r2 = client.get(f"/api/v1/pages/{user_page.id}", headers=user_headers)
         assert r2.status_code == 404
+
+    def test_delete_page_cascades_to_recordings_and_bullets(
+        self, client, regular_user, user_headers, user_page, db
+    ):
+        rec = Recording(
+            page_id=user_page.id,
+            recorded_date=date.today(),
+            audio_path="data/audio/test.audio",
+            transcript="Test.",
+            whisper_model="base",
+        )
+        db.add(rec)
+        db.flush()
+        bp = BulletPoint(
+            page_id=user_page.id,
+            recording_id=rec.id,
+            day=date.today(),
+            text="A bullet",
+            sort_order=0,
+        )
+        db.add(bp)
+        db.commit()
+
+        r = client.delete(f"/api/v1/pages/{user_page.id}", headers=user_headers)
+        assert r.status_code == 204
+
+        db.expire_all()
+        assert db.query(Page).filter(Page.id == user_page.id).first() is None
+        assert db.query(Recording).filter(Recording.page_id == user_page.id).first() is None
+        assert db.query(BulletPoint).filter(BulletPoint.page_id == user_page.id).first() is None
 
     def test_list_only_own_pages(self, client, regular_user, second_user, user_headers, second_user_headers, db):
         from app.models import Page
