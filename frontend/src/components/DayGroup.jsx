@@ -17,7 +17,7 @@ import { bullets as bulletsApi, recordings as recordingsApi } from '../api';
 import { BulletItem } from './BulletItem';
 import { TranscriptView } from './TranscriptView';
 
-function RecordingSection({ recording, initialBullets, pageId, onArchive, onBulletsChange }) {
+function RecordingSection({ recording, initialBullets, pageId, onArchive, onBulletsChange, bufferEnabled }) {
   const [bulletList, setBulletList] = useState(initialBullets);
   const [retranscribing, setRetranscribing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,10 @@ function RecordingSection({ recording, initialBullets, pageId, onArchive, onBull
   const handleUpdate = async (id, text) => {
     const updated = await bulletsApi.update(id, text);
     setBulletList((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  };
+
+  const handleBufferSend = (id, ideaId) => {
+    setBulletList((prev) => prev.map((b) => (b.id === id ? { ...b, buffer_idea_id: ideaId } : b)));
   };
 
   const handleDelete = async (id) => {
@@ -117,6 +121,8 @@ function RecordingSection({ recording, initialBullets, pageId, onArchive, onBull
                   bullet={bullet}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
+                  onBufferSend={handleBufferSend}
+                  bufferEnabled={bufferEnabled}
                   disabled={busy}
                 />
               ))}
@@ -131,7 +137,7 @@ function RecordingSection({ recording, initialBullets, pageId, onArchive, onBull
   );
 }
 
-export function DayGroup({ group, pageId, onDelete, onUpdate }) {
+export function DayGroup({ group, pageId, onDelete, onUpdate, bufferEnabled }) {
   const { day, groups, orphan_bullets: initialOrphanBullets } = group;
   const [orphanBullets, setOrphanBullets] = useState(initialOrphanBullets);
   const [addingText, setAddingText] = useState('');
@@ -161,6 +167,10 @@ export function DayGroup({ group, pageId, onDelete, onUpdate }) {
   const handleOrphanUpdate = async (id, text) => {
     const updated = await bulletsApi.update(id, text);
     setOrphanBullets((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  };
+
+  const handleOrphanBufferSend = (id, ideaId) => {
+    setOrphanBullets((prev) => prev.map((b) => (b.id === id ? { ...b, buffer_idea_id: ideaId } : b)));
   };
 
   const handleOrphanDelete = async (id) => {
@@ -214,6 +224,7 @@ export function DayGroup({ group, pageId, onDelete, onUpdate }) {
             pageId={pageId}
             onArchive={handleRecordingArchived}
             onBulletsChange={onUpdate}
+            bufferEnabled={bufferEnabled}
           />
         ))}
 
@@ -229,6 +240,8 @@ export function DayGroup({ group, pageId, onDelete, onUpdate }) {
                       bullet={bullet}
                       onUpdate={handleOrphanUpdate}
                       onDelete={handleOrphanDelete}
+                      onBufferSend={handleOrphanBufferSend}
+                      bufferEnabled={bufferEnabled}
                       disabled={busy}
                     />
                   ))}

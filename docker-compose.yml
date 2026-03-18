@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -10,7 +8,8 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - DB_PATH=
+      # Use path inside container; /app/data is the mounted DATA_PATH/data volume
+      - DB_PATH=data/pointify.db
     restart: unless-stopped
     volumes:
       # Persistent storage for SQLite DB and uploaded audio files.
@@ -52,7 +51,10 @@ services:
       - no-new-privileges:true
     networks:
       - pointify_internal
+      - pointify_net
 
 networks:
   pointify_internal:
     driver: bridge
+  pointify_net:
+    external: true

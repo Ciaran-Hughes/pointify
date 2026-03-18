@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     # API docs (off by default; set ENABLE_DOCS=true for local development)
     enable_docs: bool = False
 
+    # Buffer (optional — feature is disabled when token is empty)
+    buffer_api_token: str = ""
+    buffer_organization_id: str = ""
+
+    @property
+    def buffer_enabled(self) -> bool:
+        return bool(self.buffer_api_token)
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

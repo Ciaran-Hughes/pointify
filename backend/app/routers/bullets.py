@@ -5,12 +5,15 @@ import uuid
 from datetime import date, datetime, timezone
 
 import nh3
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.auth import CurrentUser, DbSession
+from app.config import settings
 from app.dependencies import get_page_or_404
+from app.limiter import limiter
 from app.models import BulletPoint, Page, Recording
-from app.schemas import BulletCreate, BulletResponse, BulletReorder, BulletUpdate, DayGroup, RecordingGroup
+from app.schemas import BulletCreate, BulletResponse, BulletReorder, BulletUpdate, BufferSendResponse, DayGroup, RecordingGroup
+from app.services.buffer import BufferUnauthorizedError, create_idea
 
 logger = logging.getLogger("pointify.bullets")
 router = APIRouter(prefix="/api/v1", tags=["bullets"])
@@ -172,6 +175,60 @@ async def reorder_bullets(page_id: uuid.UUID, body: BulletReorder, current_user:
     for b in bullets:
         db.refresh(b)
     return bullets
+
+
+@router.post(
+    "/bullets/{bullet_id}/buffer",
+    response_model=BufferSendResponse,
+    status_code=status.HTTP_200_OK,
+)
+@limiter.limit("5/minute")
+async def send_bullet_to_buffer(
+    request: Request,
+    bullet_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> dict:
+    """Send a bullet point to Buffer as an Idea. Idempotent: returns 409 if already sent."""
+    if not settings.buffer_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail={"detail": "Buffer integration is not configured", "error_code": "BUFFER_NOT_CONFIGURED"},
+        )
+
+    bullet = _get_bullet_or_404(bullet_id, current_user.id, db)
+
+    if bullet.buffer_idea_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"detail": "This bullet has already been sent to Buffer", "error_code": "BUFFER_ALREADY_SENT"},
+        )
+
+    try:
+        idea_id = await create_idea(bullet.text)
+    except BufferUnauthorizedError as exc:
+        logger.warning("Buffer unauthorized when sending bullet", extra={"error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"detail": "Buffer API token is invalid or expired", "error_code": "BUFFER_UNAUTHORIZED"},
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error sending to Buffer", extra={"error": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"detail": "Failed to send to Buffer", "error_code": "BUFFER_ERROR"},
+        ) from exc
+
+    if not idea_id:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"detail": "Buffer did not return an idea ID", "error_code": "BUFFER_NO_IDEA_ID"},
+        )
+
+    bullet.buffer_idea_id = idea_id
+    db.commit()
+    logger.info("Bullet sent to Buffer", extra={"bullet_id": bullet_id, "user_id": current_user.id})
+    return {"buffer_idea_id": idea_id, "bullet_id": bullet_id}
 
 
 @router.delete("/recordings/{recording_id}/day", status_code=status.HTTP_204_NO_CONTENT)

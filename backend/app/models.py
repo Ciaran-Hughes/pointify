@@ -99,6 +99,7 @@ class BulletPoint(Base):
     text: Mapped[str] = mapped_column(String(2000), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    buffer_idea_id: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
 
     recording: Mapped["Recording | None"] = relationship("Recording", back_populates="bullet_points")
     page: Mapped["Page"] = relationship("Page", back_populates="bullet_points")

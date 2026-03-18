@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 if [ ! -f ".env" ]; then
-  echo "ERROR: .env not found. Copy backend/.env.example to .env and fill in values."
+  echo "ERROR: .env not found. Copy .env.example to .env and fill in values."
   exit 1
 fi
 

@@ -60,7 +60,7 @@ Ensure Ollama is running (`ollama serve`) and the digest model is pulled (e.g. `
 
 ## Production (Docker)
 
-1. Copy `backend/.env.example` to **project root** as `.env` and fill in values (including `DATA_PATH` and `WHISPER_CACHE_PATH` for volumes).
+1. Copy **`.env.example`** (in project root) to **`.env`** and set values — especially `DATA_PATH`, `WHISPER_CACHE_PATH`, `JWT_SECRET`, `OLLAMA_URL`, and `CORS_ORIGINS`.
 2. Run:
 
 ```bash

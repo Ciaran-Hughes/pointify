@@ -13,6 +13,7 @@ from app.config import settings
 from app.dependencies import get_page_or_404
 from app.models import BulletPoint, Page, Recording
 from app.schemas import RecordingResponse, WHISPER_LANGUAGES, WHISPER_MODELS
+from app.services.buffer import BufferUnauthorizedError, create_idea, is_buffer_trigger, strip_buffer_trigger
 from app.services.digest import digest_transcript
 from app.services.transcription import transcribe, validate_audio_file
 
@@ -123,6 +124,7 @@ async def upload_recording(
         # Generate bullet points asynchronously
         if transcript:
             bullets = await digest_transcript(transcript)
+            created_bullets: list[BulletPoint] = []
             for i, text in enumerate(bullets):
                 bp = BulletPoint(
                     recording_id=recording.id,
@@ -132,7 +134,27 @@ async def upload_recording(
                     sort_order=i,
                 )
                 db.add(bp)
+                created_bullets.append(bp)
             db.commit()
+
+            # Best-effort: send bullets containing Buffer trigger phrase to Buffer Ideas
+            if settings.buffer_enabled:
+                for bp in created_bullets:
+                    if not is_buffer_trigger(bp.text):
+                        continue
+                    idea_text = strip_buffer_trigger(bp.text)
+                    if not idea_text:
+                        continue
+                    try:
+                        idea_id = await create_idea(idea_text)
+                        if idea_id:
+                            bp.buffer_idea_id = idea_id
+                    except BufferUnauthorizedError as exc:
+                        logger.warning("Buffer unauthorized during auto-send", extra={"error": str(exc)})
+                        break  # all bullets will fail with same bad token, stop early
+                    except Exception as exc:
+                        logger.warning("Buffer auto-send failed", extra={"error": str(exc)})
+                db.commit()
 
         logger.info(
             "Recording processed",

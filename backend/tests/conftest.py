@@ -1,7 +1,12 @@
 """Shared pytest fixtures."""
 
-import tempfile
 import os
+
+# Override DB_PATH before any app module is imported so pydantic-settings
+# doesn't try to create directories for the production/NAS path in backend/.env.
+os.environ.setdefault("DB_PATH", "data/pointify.db")
+
+import tempfile
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine

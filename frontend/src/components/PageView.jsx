@@ -1,7 +1,7 @@
 import { ArrowLeftIcon, MicrophoneIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { pages as pagesApi } from '../api';
+import { health as healthApi, pages as pagesApi } from '../api';
 import { ThemeToggle } from './ThemeToggle';
 import { DayGroup } from './DayGroup';
 import { VoiceRecorder } from './VoiceRecorder';
@@ -16,6 +16,7 @@ export function PageView() {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [bufferEnabled, setBufferEnabled] = useState(false);
   const nameInputRef = useRef(null);
 
   const loadPage = useCallback(async () => {
@@ -34,6 +35,10 @@ export function PageView() {
   }, [pageId]);
 
   useEffect(() => { loadPage(); }, [loadPage]);
+
+  useEffect(() => {
+    healthApi.check().then((h) => setBufferEnabled(Boolean(h?.buffer))).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (editingName && nameInputRef.current) nameInputRef.current.focus();
@@ -139,6 +144,7 @@ export function PageView() {
             pageId={pageId}
             onDelete={handleDayDelete}
             onUpdate={loadPage}
+            bufferEnabled={bufferEnabled}
           />
         ))}
       </main>

@@ -181,6 +181,9 @@ export const bullets = {
       method: 'PATCH',
       body: JSON.stringify({ ordered_ids: orderedIds }),
     }),
+
+  addToBuffer: (bulletId) =>
+    json(`/bullets/${bulletId}/buffer`, { method: 'POST' }),
 };
 
 // ── Admin ─────────────────────────────────────────────────────────────────────

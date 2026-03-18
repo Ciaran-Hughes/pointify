@@ -257,6 +257,12 @@ class BulletResponse(BaseModel):
     text: str
     sort_order: int
     created_at: datetime
+    buffer_idea_id: str | None = None
+
+
+class BufferSendResponse(BaseModel):
+    buffer_idea_id: str
+    bullet_id: UUID
 
 
 class RecordingGroup(BaseModel):
@@ -276,6 +282,7 @@ class HealthResponse(BaseModel):
     status: str
     db: bool
     ollama: bool
+    buffer: bool = False
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────

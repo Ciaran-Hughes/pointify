@@ -77,6 +77,7 @@ def _migrate_db() -> None:
     columns_to_add = [
         ("users", "whisper_language", "VARCHAR(10) NOT NULL DEFAULT 'en'"),
         ("recordings", "whisper_language", "VARCHAR(10) NOT NULL DEFAULT 'en'"),
+        ("bullet_points", "buffer_idea_id", "VARCHAR(64) DEFAULT NULL"),
     ]
     with engine.connect() as conn:
         for table, col, definition in columns_to_add:
@@ -186,4 +187,5 @@ async def health_check() -> dict:
         "status": "ok" if db_ok else "degraded",
         "db": db_ok,
         "ollama": ollama_ok,
+        "buffer": settings.buffer_enabled,
     }
