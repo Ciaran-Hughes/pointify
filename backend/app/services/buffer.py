@@ -117,10 +117,11 @@ async def fetch_organization_id() -> str:
     return orgs[0]["id"]
 
 
-async def create_idea(text: str) -> Optional[str]:
+async def create_idea(text: str, title: str | None = None) -> Optional[str]:
     """
-    Create a Buffer Idea with the given text. Returns the Buffer Idea ID on success,
-    or None if the request fails (best-effort: callers should not crash on None).
+    Create a Buffer Idea with the given text and optional title.
+    Returns the Buffer Idea ID on success, or None if the request fails
+    (best-effort: callers should not crash on None).
 
     Raises BufferUnauthorizedError if the token is invalid — callers may want to
     surface this specifically (e.g. return 502 vs silently skip).
@@ -167,10 +168,14 @@ async def create_idea(text: str) -> Optional[str]:
     }
     """
 
+    content: dict = {"text": text}
+    if title:
+        content["title"] = title
+
     variables = {
         "input": {
             "organizationId": org_id,
-            "content": {"text": text},
+            "content": content,
         }
     }
 

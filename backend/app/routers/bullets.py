@@ -14,6 +14,7 @@ from app.limiter import limiter
 from app.models import BulletPoint, Page, Recording
 from app.schemas import BulletCreate, BulletResponse, BulletReorder, BulletUpdate, BufferSendResponse, DayGroup, RecordingGroup
 from app.services.buffer import BufferUnauthorizedError, create_idea
+from app.services.digest import generate_idea_title
 
 logger = logging.getLogger("pointify.bullets")
 router = APIRouter(prefix="/api/v1", tags=["bullets"])
@@ -205,7 +206,13 @@ async def send_bullet_to_buffer(
         )
 
     try:
-        idea_id = await create_idea(bullet.text)
+        title = await generate_idea_title(bullet.text)
+    except Exception as exc:
+        logger.warning("Title generation failed", extra={"error": str(exc)})
+        title = None
+
+    try:
+        idea_id = await create_idea(bullet.text, title=title)
     except BufferUnauthorizedError as exc:
         logger.warning("Buffer unauthorized when sending bullet", extra={"error": str(exc)})
         raise HTTPException(

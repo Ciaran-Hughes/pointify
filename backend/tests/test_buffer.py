@@ -133,6 +133,51 @@ class TestBufferService:
         assert body["variables"]["input"]["organizationId"] == "org-123"
 
     @pytest.mark.asyncio
+    async def test_create_idea_sends_title_in_content(self):
+        idea_id = "507f1f77bcf86cd799439022"
+        response_body = {"data": {"createIdea": {"id": idea_id}}}
+        mock_response = _mock_httpx_response(response_body)
+
+        with patch.object(settings, "buffer_api_token", "test-token"), \
+             patch.object(settings, "buffer_organization_id", "org-123"), \
+             patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            result = await create_idea("My cool idea", title="Blog Post Idea")
+
+        assert result == idea_id
+        call_kwargs = mock_client.post.call_args
+        body = call_kwargs[1]["json"] if call_kwargs[1] else call_kwargs[0][1]
+        assert body["variables"]["input"]["content"]["title"] == "Blog Post Idea"
+        assert body["variables"]["input"]["content"]["text"] == "My cool idea"
+
+    @pytest.mark.asyncio
+    async def test_create_idea_omits_title_when_none(self):
+        idea_id = "507f1f77bcf86cd799439033"
+        response_body = {"data": {"createIdea": {"id": idea_id}}}
+        mock_response = _mock_httpx_response(response_body)
+
+        with patch.object(settings, "buffer_api_token", "test-token"), \
+             patch.object(settings, "buffer_organization_id", "org-123"), \
+             patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            result = await create_idea("My cool idea", title=None)
+
+        assert result == idea_id
+        call_kwargs = mock_client.post.call_args
+        body = call_kwargs[1]["json"] if call_kwargs[1] else call_kwargs[0][1]
+        assert "title" not in body["variables"]["input"]["content"]
+
+    @pytest.mark.asyncio
     async def test_create_idea_returns_none_when_disabled(self):
         with patch.object(settings, "buffer_api_token", ""):
             result = await create_idea("some text")
@@ -351,7 +396,9 @@ class TestSendToBufferEndpoint:
         bp = _make_bullet(db, user_page.id, "A great idea")
         idea_id = "buffer-idea-abc"
 
-        with patch("app.routers.bullets.create_idea", new=AsyncMock(return_value=idea_id)), \
+        mock_create = AsyncMock(return_value=idea_id)
+        with patch("app.routers.bullets.create_idea", new=mock_create), \
+             patch("app.routers.bullets.generate_idea_title", new=AsyncMock(return_value="A Great Idea")), \
              patch.object(settings, "buffer_api_token", "test-token"):
             r = client.post(f"/api/v1/bullets/{bp.id}/buffer", headers=user_headers)
 
@@ -359,9 +406,24 @@ class TestSendToBufferEndpoint:
         data = r.json()
         assert data["buffer_idea_id"] == idea_id
         assert data["bullet_id"] == str(bp.id)
+        mock_create.assert_called_once_with(bp.text, title="A Great Idea")
 
         db.refresh(bp)
         assert bp.buffer_idea_id == idea_id
+
+    def test_send_to_buffer_title_failure_still_sends(self, client, regular_user, user_headers, user_page, db):
+        """If title generation fails, the idea is still sent to Buffer without a title."""
+        bp = _make_bullet(db, user_page.id, "An idea without title")
+        idea_id = "buffer-idea-notitle"
+
+        mock_create = AsyncMock(return_value=idea_id)
+        with patch("app.routers.bullets.create_idea", new=mock_create), \
+             patch("app.routers.bullets.generate_idea_title", new=AsyncMock(return_value=None)), \
+             patch.object(settings, "buffer_api_token", "test-token"):
+            r = client.post(f"/api/v1/bullets/{bp.id}/buffer", headers=user_headers)
+
+        assert r.status_code == 200
+        mock_create.assert_called_once_with(bp.text, title=None)
 
     def test_send_to_buffer_already_sent_returns_409(self, client, regular_user, user_headers, user_page, db):
         bp = _make_bullet(db, user_page.id, "Already in Buffer", buffer_idea_id="existing-id")
@@ -463,13 +525,15 @@ class TestVoiceTriggerIntegration:
         return io.BytesIO(b"RIFF\x00\x00\x00\x00WAVEfmt ")
 
     def test_upload_with_buffer_keyword_sends_to_buffer(self, client, regular_user, user_headers, user_page):
-        """When a digest bullet contains 'add to buffer', idea should be created."""
+        """When a digest bullet contains 'add to buffer', idea should be created with a title."""
         idea_id = "voice-idea-001"
 
+        mock_create = AsyncMock(return_value=idea_id)
         with patch("app.routers.recordings.validate_audio_file", return_value=None), \
              patch("app.routers.recordings.transcribe", return_value="note: write blog post add to buffer"), \
              patch("app.routers.recordings.digest_transcript", new=AsyncMock(return_value=["Write blog post add to buffer"])), \
-             patch("app.routers.recordings.create_idea", new=AsyncMock(return_value=idea_id)) as mock_create, \
+             patch("app.routers.recordings.generate_idea_title", new=AsyncMock(return_value="Write Blog Post")) as mock_title, \
+             patch("app.routers.recordings.create_idea", new=mock_create), \
              patch.object(settings, "buffer_api_token", "tok"):
 
             form_data = {"file": ("rec.webm", self._minimal_audio(), "audio/webm")}
@@ -485,6 +549,9 @@ class TestVoiceTriggerIntegration:
         called_text = mock_create.call_args[0][0]
         assert "add to buffer" not in called_text.lower()
         assert "buffer" not in called_text.lower()
+        # Title should have been generated and passed
+        mock_title.assert_called_once()
+        assert mock_create.call_args[1].get("title") == "Write Blog Post"
 
     def test_upload_without_buffer_keyword_skips_buffer(self, client, regular_user, user_headers, user_page):
         """Normal bullets without trigger phrase should not call create_idea."""
@@ -509,6 +576,7 @@ class TestVoiceTriggerIntegration:
         with patch("app.routers.recordings.validate_audio_file", return_value=None), \
              patch("app.routers.recordings.transcribe", return_value="cool idea add to buffer"), \
              patch("app.routers.recordings.digest_transcript", new=AsyncMock(return_value=["Cool idea add to buffer"])), \
+             patch("app.routers.recordings.generate_idea_title", new=AsyncMock(return_value="Cool Idea")), \
              patch("app.routers.recordings.create_idea", new=AsyncMock(side_effect=Exception("Buffer down"))), \
              patch.object(settings, "buffer_api_token", "tok"):
 
@@ -543,7 +611,7 @@ class TestVoiceTriggerIntegration:
         """If Buffer token is unauthorized, remaining bullets are skipped but upload succeeds."""
         call_count = {"n": 0}
 
-        async def failing_create_idea(text):
+        async def failing_create_idea(text, title=None):
             call_count["n"] += 1
             raise BufferUnauthorizedError("bad token")
 
@@ -552,6 +620,7 @@ class TestVoiceTriggerIntegration:
              patch("app.routers.recordings.digest_transcript", new=AsyncMock(return_value=[
                  "Idea one buffer", "Idea two buffer"
              ])), \
+             patch("app.routers.recordings.generate_idea_title", new=AsyncMock(return_value=None)), \
              patch("app.routers.recordings.create_idea", new=failing_create_idea), \
              patch.object(settings, "buffer_api_token", "tok"):
 

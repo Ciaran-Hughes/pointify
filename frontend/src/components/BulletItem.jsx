@@ -6,8 +6,10 @@ import { bullets as bulletsApi } from '../api';
 
 function BufferIcon({ className }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+    <svg className={className} viewBox="0 0 31 36" fill="currentColor" aria-hidden="true">
+      <path d="M1 9.34 15.17 2l14.322 7.34-14.322 7.366L1 9.34Z" />
+      <path d="m5.503 15.787 9.667 4.754 9.769-4.754 4.553 2.218-14.322 6.973L1 18.005l4.503-2.218Z" />
+      <path d="M15.17 29.301 5.503 24.06 1 26.493l14.17 7.676 14.322-7.676-4.553-2.434-9.77 5.242Z" />
     </svg>
   );
 }
@@ -160,7 +162,7 @@ export function BulletItem({ bullet, onUpdate, onDelete, onBufferSend, bufferEna
                   aria-label="Already sent to Buffer"
                   className="p-1 text-green-500 dark:text-green-400"
                 >
-                  <CheckIcon className="w-3.5 h-3.5" />
+                  <BufferIcon className="w-3.5 h-3.5" />
                 </span>
               ) : (
                 <button

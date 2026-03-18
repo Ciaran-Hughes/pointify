@@ -14,7 +14,7 @@ from app.dependencies import get_page_or_404
 from app.models import BulletPoint, Page, Recording
 from app.schemas import RecordingResponse, WHISPER_LANGUAGES, WHISPER_MODELS
 from app.services.buffer import BufferUnauthorizedError, create_idea, is_buffer_trigger, strip_buffer_trigger
-from app.services.digest import digest_transcript
+from app.services.digest import digest_transcript, generate_idea_title
 from app.services.transcription import transcribe, validate_audio_file
 
 from app.limiter import limiter
@@ -146,7 +146,12 @@ async def upload_recording(
                     if not idea_text:
                         continue
                     try:
-                        idea_id = await create_idea(idea_text)
+                        idea_title = await generate_idea_title(idea_text)
+                    except Exception as exc:
+                        logger.warning("Title generation failed during auto-send", extra={"error": str(exc)})
+                        idea_title = None
+                    try:
+                        idea_id = await create_idea(idea_text, title=idea_title)
                         if idea_id:
                             bp.buffer_idea_id = idea_id
                     except BufferUnauthorizedError as exc:
