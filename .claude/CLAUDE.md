@@ -8,6 +8,34 @@
 
 **BEFORE installing ANY dependencies:**
 
+0. **Verify the 7-day release gate is active (supply chain protection):**
+
+   ```bash
+   # npm — must show min-release-age=7
+   grep min-release-age ~/.npmrc
+
+   # uv — must show exclude-newer = "7 days"
+   grep exclude-newer ~/.config/uv/uv.toml
+   ```
+
+   - If the global config is missing, add it to the project-level `.npmrc` or `uv.toml` instead:
+     ```ini
+     # .npmrc (project root)
+     min-release-age=7
+     ```
+     ```toml
+     # uv.toml (project root)
+     exclude-newer = "7 days"
+     ```
+     ```toml
+     # pyproject.toml (project root)
+     [tool.uv]
+     exclude-newer = "7 days"
+     ```
+   - The gate blocks any package version published in the last 7 days, catching supply chain attacks before CVEs are filed.
+   - Applies at resolution time (`npm update`, `uv add`, `uv lock`) — not on `npm ci` / `uv sync` with existing lockfiles.
+   - OSV-scanner and the release gate are complementary: the gate catches **new** malicious packages; OSV catches **known** CVEs.
+
 1. **Query the OSV API to check the package before installing:**
 
    ```bash
